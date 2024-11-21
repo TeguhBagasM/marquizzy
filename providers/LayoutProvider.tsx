@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { fetchUsers } from "@/app/(auth)/actions/fetchUsers";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 

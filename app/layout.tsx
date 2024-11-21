@@ -1,22 +1,17 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
-import "./globals.css";
+import { Raleway } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import "./globals.css";
+import LayoutProvider from "@/providers/LayoutProvider";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
+const raleway = Raleway({
+  subsets: ["latin"],
+  weight: ["200", "300", "400", "500", "600", "700", "900"],
 });
 
 export const metadata: Metadata = {
   title: "Marquizzy",
-  description: "Marquizzy by Teguh Bagas M",
+  description: "Weekly quiz question for developers",
 };
 
 export default function RootLayout({
@@ -27,7 +22,9 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>{children}</body>
+        <body className={`${raleway.className} min-h-screen`}>
+          <LayoutProvider>{children}</LayoutProvider>
+        </body>
       </html>
     </ClerkProvider>
   );
