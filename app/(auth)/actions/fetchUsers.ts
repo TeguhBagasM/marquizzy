@@ -4,60 +4,59 @@ import { currentUser } from "@clerk/nextjs/server";
 
 export const fetchUsers = async () => {
   try {
+    // Mendapatkan data user dari Clerk
     const clerkUser = await currentUser();
-
-    // Jika tidak ada pengguna yang login, kembalikan null atau error yang sesuai
     if (!clerkUser) {
-      return {
-        error: "No user is currently logged in",
-        data: null,
-      };
+      throw new Error("User tidak ditemukan di Clerk.");
     }
 
-    let mongoUser = null;
-    mongoUser = await prisma.user.findUnique({
+    // Cari user di PostgreSQL berdasarkan clerkUserId
+    let postgresUser = await prisma.user.findUnique({
       where: {
         clerkUserId: clerkUser.id,
       },
     });
 
-    if (!mongoUser) {
-      let username = clerkUser.username;
+    // Jika user belum ada, buat user baru di database
+    if (!postgresUser) {
+      let username =
+        clerkUser.username || `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
       if (!username) {
-        username = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
+        throw new Error("Username tidak dapat diambil dari Clerk.");
       }
 
       const newUser = {
         clerkUserId: clerkUser.id,
         username,
-        email: clerkUser.emailAddresses[0]?.emailAddress || "",
+        email: clerkUser.emailAddresses?.[0]?.emailAddress || "",
         profilePic: clerkUser.imageUrl || "",
       };
 
-      mongoUser = await prisma.user.create({
+      // Validasi jika ada data penting yang kosong
+      if (!newUser.email) {
+        throw new Error("Email tidak ditemukan untuk user Clerk.");
+      }
+
+      postgresUser = await prisma.user.create({
         data: newUser,
       });
     }
 
+    // Ambil hasil quiz untuk user tersebut
     const quizResults = await prisma.quizResult.findMany({
       where: {
-        userId: mongoUser.id,
+        userId: postgresUser.id,
       },
     });
 
+    // Kembalikan data user dan hasil quiz
     return {
       data: {
-        user: mongoUser,
+        user: postgresUser,
         quizResults,
       },
-      error: null,
     };
   } catch (error) {
-    // Tangani error dengan lebih baik
-    console.error("Error in fetchUsers:", error);
-    return {
-      error: error instanceof Error ? error.message : "An unknown error occurred",
-      data: null,
-    };
+    console.error("Terjadi kesalahan:");
   }
 };
