@@ -5,42 +5,59 @@ import { currentUser } from "@clerk/nextjs/server";
 export const fetchUsers = async () => {
   try {
     const clerkUser = await currentUser();
-    let postgresUser = null;
-    postgresUser = await prisma.user.findUnique({
+
+    // Jika tidak ada pengguna yang login, kembalikan null atau error yang sesuai
+    if (!clerkUser) {
+      return {
+        error: "No user is currently logged in",
+        data: null,
+      };
+    }
+
+    let mongoUser = null;
+    mongoUser = await prisma.user.findUnique({
       where: {
-        clerkUserId: clerkUser?.id,
+        clerkUserId: clerkUser.id,
       },
     });
 
-    if (!postgresUser) {
-      let username = clerkUser?.username;
+    if (!mongoUser) {
+      let username = clerkUser.username;
       if (!username) {
-        username = clerkUser?.firstName + " " + clerkUser?.lastName;
+        username = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
       }
-      const newUser: any = {
-        clerkUserId: clerkUser?.id,
+
+      const newUser = {
+        clerkUserId: clerkUser.id,
         username,
-        email: clerkUser?.emailAddresses[0].emailAddress,
-        profilePic: clerkUser?.imageUrl,
+        email: clerkUser.emailAddresses[0]?.emailAddress || "",
+        profilePic: clerkUser.imageUrl || "",
       };
-      postgresUser = await prisma.user.create({
+
+      mongoUser = await prisma.user.create({
         data: newUser,
       });
     }
 
     const quizResults = await prisma.quizResult.findMany({
       where: {
-        userId: postgresUser.id,
+        userId: mongoUser.id,
       },
     });
 
     return {
       data: {
-        user: postgresUser,
+        user: mongoUser,
         quizResults,
       },
+      error: null,
     };
   } catch (error) {
-    console.log(error);
+    // Tangani error dengan lebih baik
+    console.error("Error in fetchUsers:", error);
+    return {
+      error: error instanceof Error ? error.message : "An unknown error occurred",
+      data: null,
+    };
   }
 };
